@@ -20,12 +20,15 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'nhan_su'],
+    # Note: quan_ly_cong_viec is a soft dependency (checked at runtime)
+    'depends': ['base', 'nhan_su', 'mail'],
 
     # always loaded
     'data': [
         'security/ir.model.access.csv',
         'data/sequence_data.xml',
+        'report/report_action.xml',
+        'report/project_approval_report.xml',
         'views/projects.xml',
         'views/employees.xml',
         'views/taskss.xml',

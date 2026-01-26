@@ -93,17 +93,17 @@
                                             <field name="ho_ten"/>
                                         </h3>
                                         <div class="nhan_vien_detail_row">
-                                            <i class="fa fa-id-card"/> 
+                                            <i class="fa fa-id-card" title="Mã nhân viên"/> 
                                             <strong>Mã NV:</strong> 
                                             <span><field name="ma_nhan_vien"/></span>
                                         </div>
                                         <div class="nhan_vien_detail_row">
-                                            <i class="fa fa-calendar"/> 
+                                            <i class="fa fa-calendar" title="Ngày sinh"/> 
                                             <strong>Ngày sinh:</strong> 
                                             <span><field name="ngay_sinh"/></span>
                                         </div>
                                         <div class="nhan_vien_detail_row">
-                                            <i class="fa fa-venus-mars"/> 
+                                            <i class="fa fa-venus-mars" title="Giới tính"/> 
                                             <strong>Giới tính:</strong> 
                                             <span t-if="record.gioi_tinh.raw_value == 'nam'">Nam</span>
                                             <span t-if="record.gioi_tinh.raw_value == 'nu'">Nữ</span>
@@ -111,22 +111,22 @@
                                             <span t-if="!record.gioi_tinh.raw_value">-</span>
                                         </div>
                                         <div class="nhan_vien_detail_row">
-                                            <i class="fa fa-briefcase"/> 
+                                            <i class="fa fa-briefcase" title="Chức vụ"/> 
                                             <strong>Chức vụ:</strong> 
                                             <span><field name="chuc_vu_id"/></span>
                                         </div>
                                         <div class="nhan_vien_detail_row">
-                                            <i class="fa fa-envelope"/> 
+                                            <i class="fa fa-envelope" title="Email"/> 
                                             <strong>Email:</strong> 
                                             <span><field name="email"/></span>
                                         </div>
                                     </div>
                                     <div class="nhan_vien_actions">
-                                        <a type="edit" class="btn btn-primary btn-sm">
-                                            <i class="fa fa-edit"/> Sửa
+                                        <a type="edit" class="btn btn-primary btn-sm" role="button">
+                                            <i class="fa fa-edit" title="Sửa"/> Sửa
                                         </a>
-                                        <a type="delete" class="btn btn-danger btn-sm">
-                                            <i class="fa fa-trash"/> Xóa
+                                        <a type="delete" class="btn btn-danger btn-sm" role="button">
+                                            <i class="fa fa-trash" title="Xóa"/> Xóa
                                         </a>
                                     </div>
                                 </div>

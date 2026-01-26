@@ -28,12 +28,6 @@
             action="action_cong_viec"
         />
 
-        <menuitem name="Quản lý nhiệm vụ" 
-            id="menu_nhiem_vu" 
-            parent="menu_quan_ly" 
-            sequence="3"
-            action="action_nhiem_vu"
-        />
 
         <menuitem name="Theo dõi tiến độ" 
             id="menu_tien_do" 
