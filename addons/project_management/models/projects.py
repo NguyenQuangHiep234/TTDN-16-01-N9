@@ -32,7 +32,7 @@ class Projects(models.Model):
 
     ly_do_1 = fields.Text(string="Lý do hủy bỏ", help="Lý do hủy bỏ công việc")
 
-    task_ids = fields.One2many('taskss', inverse_name='projects_id', String='Công việc')
+    task_ids = fields.One2many('taskss', inverse_name='projects_id', string='Công việc')
 
     # ============ TRƯỜNG XÉT DUYỆT DỰ ÁN ============
     approval_state = fields.Selection([

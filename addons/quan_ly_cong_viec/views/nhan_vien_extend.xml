@@ -29,10 +29,10 @@
                             </tree>
                         </field>
                     </page>
+                    <!-- Tab "Dự án tham gia" tạm thời bị comment vì dependency issue
                     <page string="Dự án tham gia">
                         <field name="du_an_tham_gia_ids" readonly="1">
                             <tree>
-                                <field name="projects_id"/>
                                 <field name="projects_name"/>
                                 <field name="manager_name"/>
                                 <field name="status"/>
@@ -42,6 +42,7 @@
                             </tree>
                         </field>
                     </page>
+                    -->
                 </xpath>
             </field>
         </record>
