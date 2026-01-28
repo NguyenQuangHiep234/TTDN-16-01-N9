@@ -12,7 +12,7 @@
 
 ## 1.1. Clone project.
 ```
-git clone https://gitlab.com/NguyenQuangHiep234/TTDN-16-01-N9
+git clone https://github.com/NguyenQuangHiep234/TTDN-16-01-N9
 ```
 
 ```
