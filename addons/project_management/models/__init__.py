@@ -11,3 +11,9 @@ from . import expenses
 from . import project_extensions
 
 from . import nhan_vien_extend
+
+from . import risk_assessment
+
+from . import risk_ai_engine
+
+from . import auto_risk_triggers
