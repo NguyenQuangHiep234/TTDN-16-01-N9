@@ -38,6 +38,7 @@
         'views/cong_viec_extend.xml',
         'views/nhan_vien_extend.xml',
         'views/risk_management.xml',
+        'views/gemini_ai_views.xml',
         'views/menu.xml',
     ],
 

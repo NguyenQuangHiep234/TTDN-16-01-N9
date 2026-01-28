@@ -254,6 +254,7 @@ class RiskAIEngine(models.Model):
     def analyze_project_risks(self, project_id):
         """
         Phân tích tất cả các loại rủi ro cho một dự án
+        Tích hợp với Gemini AI để phân tích nâng cao
         Trả về danh sách các rủi ro được phát hiện
         """
         project = self.env['projects'].browse(project_id)
@@ -262,12 +263,33 @@ class RiskAIEngine(models.Model):
         
         all_risks = []
         
-        # Phát hiện các loại rủi ro
+        # BƯỚC 1: Phát hiện rủi ro bằng Rule-based AI
+        _logger.info(f"[Rule-based AI] Analyzing project {project.projects_id}")
         all_risks.extend(self.detect_schedule_risk(project))
         all_risks.extend(self.detect_budget_risk(project))
         all_risks.extend(self.detect_resource_risk(project))
         
-        # Tạo hoặc cập nhật risk records
+        # BƯỚC 2: Phân tích bổ sung bằng Gemini AI (nếu được kích hoạt)
+        try:
+            gemini = self.env['gemini.ai.provider'].get_provider()
+            if gemini.is_active and gemini.api_key:
+                _logger.info(f"[Gemini AI] Analyzing project {project.projects_id}")
+                
+                # Nếu dự án có mô tả, phân tích text-based risks
+                if project.description:
+                    gemini_risks = gemini.analyze_project_description(project)
+                    if gemini_risks:
+                        _logger.info(f"[Gemini AI] Found {len(gemini_risks)} additional risks from description")
+                        all_risks.extend(gemini_risks)
+                
+                # Comprehensive analysis (tùy chọn - chỉ khi cần)
+                # comprehensive_result = gemini.comprehensive_project_analysis(project)
+                # if comprehensive_result.get('risks'):
+                #     all_risks.extend(comprehensive_result['risks'])
+        except Exception as e:
+            _logger.warning(f"[Gemini AI] Not available or error: {str(e)}")
+        
+        # BƯỚC 3: Tạo hoặc cập nhật risk records
         RiskAssessment = self.env['risk.assessment']
         
         for risk_data in all_risks:

@@ -8,6 +8,12 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
+                        <button name="action_enhance_with_gemini" 
+                                string="🤖 Nâng cấp với Gemini AI" 
+                                type="object" 
+                                class="btn-primary"
+                                attrs="{'invisible': [('status', 'in', ['resolved', 'accepted'])]}"/>
+                        
                         <button name="action_start_mitigation" 
                                 string="Bắt đầu khắc phục" 
                                 type="object" 

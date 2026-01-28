@@ -97,6 +97,70 @@ class RiskAssessment(models.Model):
         self.write({'status': 'accepted'})
         return True
     
+    def action_enhance_with_gemini(self):
+        """Nâng cấp phân tích rủi ro bằng Gemini AI"""
+        self.ensure_one()
+        
+        try:
+            gemini = self.env['gemini.ai.provider'].get_provider()
+            
+            if not gemini.is_active or not gemini.api_key:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Gemini AI chưa sẵn sàng',
+                        'message': 'Vui lòng cấu hình API key trong menu Cấu hình > Gemini AI Settings',
+                        'type': 'warning',
+                        'sticky': False,
+                    }
+                }
+            
+            # Generate mitigation plan nâng cao
+            _logger.info(f"Enhancing risk {self.id} with Gemini AI")
+            enhanced_mitigation = gemini.generate_mitigation_plan(self)
+            
+            # Root cause analysis nâng cao
+            enhanced_root_cause = gemini.analyze_root_cause(self)
+            
+            # Cập nhật
+            self.write({
+                'mitigation_plan': enhanced_mitigation,
+                'root_cause': enhanced_root_cause,
+                'ai_confidence': min(self.ai_confidence + 10, 95)  # Tăng confidence
+            })
+            
+            # Hiển thị notification và reload form
+            self.env['bus.bus']._sendone(self.env.user.partner_id, 'simple_notification', {
+                'title': '✅ Gemini AI phân tích hoàn tất',
+                'message': 'Đã nâng cấp Root Cause và Mitigation Plan bằng Gemini AI',
+                'type': 'success',
+                'sticky': False,
+            })
+            
+            # Reload form view để hiển thị thay đổi
+            return {
+                'type': 'ir.actions.act_window',
+                'res_model': 'risk.assessment',
+                'res_id': self.id,
+                'view_mode': 'form',
+                'view_type': 'form',
+                'target': 'current',
+            }
+            
+        except Exception as e:
+            _logger.error(f"Error enhancing risk with Gemini: {str(e)}")
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Lỗi',
+                    'message': f'Không thể sử dụng Gemini AI: {str(e)}',
+                    'type': 'danger',
+                    'sticky': True,
+                }
+            }
+    
     def name_get(self):
         """Hiển thị tên rủi ro kèm mức độ"""
         result = []
