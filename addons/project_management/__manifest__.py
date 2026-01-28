@@ -26,7 +26,6 @@
     'data': [
         'security/ir.model.access.csv',
         'data/sequence_data.xml',
-        'data/risk_cron.xml',
         'report/report_action.xml',
         'report/project_approval_report.xml',
         'views/projects.xml',
