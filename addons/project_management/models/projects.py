@@ -136,7 +136,30 @@ class Projects(models.Model):
                 if used_number >= sequence.number_next:
                     sequence.write({'number_next': used_number + 1})
         
-        return super(Projects, self).create(vals)
+        project = super(Projects, self).create(vals)
+        
+        # Tự động phát hiện rủi ro khi tạo dự án mới (chạy async để không block)
+        project.with_delay()._auto_detect_risks() if hasattr(project, 'with_delay') else project._auto_detect_risks()
+        
+        return project
+    
+    def write(self, vals):
+        """Tự động phát hiện lại rủi ro khi dự án có thay đổi quan trọng"""
+        result = super(Projects, self).write(vals)
+        
+        # Các field quan trọng trigger AI re-scan
+        important_fields = {
+            'progress', 'status', 'actual_end_date', 'start_date',
+            'approval_state'
+        }
+        
+        # Nếu có thay đổi về các field quan trọng, chạy lại AI
+        if any(field in vals for field in important_fields):
+            for project in self:
+                _logger.info(f"Dự án {project.projects_id} có thay đổi quan trọng, chạy lại AI phát hiện rủi ro...")
+                project._auto_detect_risks()
+        
+        return result
 
     def action_view_task_chart(self):
         """Xem biểu đồ công việc - sử dụng cong_viec"""
@@ -244,3 +267,106 @@ class Projects(models.Model):
         if self.approval_state != 'approved':
             raise UserError('Chỉ có thể in báo cáo cho dự án đã được phê duyệt!')
         return self.env.ref('project_management.action_report_project_approval').report_action(self)
+    
+    def _auto_detect_risks(self):
+        """Tự động phát hiện rủi ro cho dự án (gọi AI engine)"""
+        self.ensure_one()
+        
+        try:
+            # Lấy AI engine
+            RiskAIEngine = self.env['risk.ai.engine']
+            RiskAssessment = self.env['risk.assessment']
+            
+            # Nếu dự án đã hoàn thành hoặc bị hủy, tự động resolve tất cả rủi ro AI
+            if self.status in ['completed', 'cancelled'] or self.progress >= 100:
+                ai_risks = RiskAssessment.search([
+                    ('project_id', '=', self.id),
+                    ('is_ai_detected', '=', True),
+                    ('status', 'not in', ['resolved', 'accepted'])
+                ])
+                if ai_risks:
+                    ai_risks.write({
+                        'status': 'resolved',
+                        'resolved_date': fields.Datetime.now()
+                    })
+                    _logger.info(f"Dự án {self.projects_id} đã hoàn thành. Đã resolve {len(ai_risks)} rủi ro AI.")
+                return  # Không phát hiện rủi ro mới
+            
+            # Xóa các rủi ro cũ đã được AI phát hiện để tránh duplicate
+            # Chỉ xóa rủi ro chưa được xử lý (identified, analyzing)
+            old_ai_risks = RiskAssessment.search([
+                ('project_id', '=', self.id),
+                ('is_ai_detected', '=', True),
+                ('status', 'in', ['identified', 'analyzing'])
+            ])
+            if old_ai_risks:
+                old_ai_risks.unlink()
+                _logger.info(f"Đã xóa {len(old_ai_risks)} rủi ro AI cũ của dự án {self.projects_id}")
+            
+            # Phát hiện các loại rủi ro
+            all_risks = []
+            
+            # 1. Rủi ro tiến độ
+            schedule_risks = RiskAIEngine.detect_schedule_risk(self)
+            all_risks.extend(schedule_risks)
+            
+            # 2. Rủi ro ngân sách
+            budget_risks = RiskAIEngine.detect_budget_risk(self)
+            all_risks.extend(budget_risks)
+            
+            # 3. Rủi ro nguồn lực
+            resource_risks = RiskAIEngine.detect_resource_risk(self)
+            all_risks.extend(resource_risks)
+            
+            # Nếu không có rủi ro nào được phát hiện, tạo một rủi ro mặc định cho dự án mới
+            if not all_risks and not self.task_ids and not self.budget_ids:
+                all_risks.append({
+                    'name': 'Dự án mới thiếu thông tin',
+                    'risk_type': 'scope',
+                    'probability': 0.70,  # 70% = 0.70 trong Odoo
+                    'impact_score': 6.0,
+                    'description': f'Dự án "{self.projects_name}" vừa được tạo nhưng chưa có công việc và ngân sách. Cần bổ sung thông tin chi tiết.',
+                    'root_cause': 'Dự án ở giai đoạn khởi tạo, chưa có kế hoạch chi tiết.',
+                    'mitigation_plan': '1. Họp kickoff meeting\n2. Xác định scope và deliverables\n3. Lập danh sách công việc\n4. Phân bổ ngân sách\n5. Assign team members',
+                    'ai_confidence': 0.85  # 85% = 0.85 trong Odoo
+                })
+            
+            # Tạo bản ghi risk assessment cho mỗi rủi ro phát hiện
+            created_risks = []
+            for risk_data in all_risks:
+                risk_data['project_id'] = self.id
+                risk_data['is_ai_detected'] = True
+                risk_data['status'] = 'identified'
+                risk_data['assigned_to'] = self.manager_name.id if self.manager_name else False
+                new_risk = RiskAssessment.create(risk_data)
+                created_risks.append(new_risk)
+            
+            if created_risks:
+                _logger.info(f"✓ AI đã phát hiện {len(created_risks)} rủi ro cho dự án {self.projects_id}")
+                # Gửi notification cho user
+                self.message_post(
+                    body=f"AI đã tự động phát hiện {len(created_risks)} rủi ro tiềm ẩn. Vào menu 'AI Quản lý rủi ro' để xem chi tiết.",
+                    subject="AI phát hiện rủi ro",
+                    message_type='notification'
+                )
+            else:
+                _logger.info(f"Không phát hiện rủi ro nào cho dự án {self.projects_id}")
+            
+        except Exception as e:
+            # Không để lỗi AI làm gián đoạn việc tạo dự án
+            _logger.warning(f"Không thể chạy AI phát hiện rủi ro cho dự án {self.projects_id}: {str(e)}", exc_info=True)
+    
+    def action_run_risk_detection(self):
+        """Action button để chạy lại AI phát hiện rủi ro thủ công"""
+        self.ensure_one()
+        self._auto_detect_risks()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'AI Phát hiện rủi ro',
+                'message': 'Đã quét xong! Kiểm tra menu "AI Quản lý rủi ro" để xem kết quả.',
+                'type': 'success',
+                'sticky': False,
+            }
+        }

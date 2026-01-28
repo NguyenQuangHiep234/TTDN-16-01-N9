@@ -29,7 +29,7 @@ class RiskAssessment(models.Model):
         ('critical', 'Nghiêm trọng')
     ], string='Mức độ rủi ro', compute='_compute_risk_level', store=True, tracking=True)
     
-    probability = fields.Float('Xác suất (%)', default=50.0, help='Xác suất xảy ra rủi ro (0-100%)')
+    probability = fields.Float('Xác suất (%)', default=0.5, help='Xác suất xảy ra rủi ro (0-100%)')
     impact_score = fields.Float('Điểm tác động', default=5.0, help='Mức độ tác động (1-10)')
     risk_score = fields.Float('Điểm rủi ro', compute='_compute_risk_score', store=True, 
                               help='Điểm rủi ro = Xác suất x Tác động / 10')
@@ -62,9 +62,10 @@ class RiskAssessment(models.Model):
     
     @api.depends('probability', 'impact_score')
     def _compute_risk_score(self):
-        """Tính điểm rủi ro = (Xác suất / 100) * Tác động * 10"""
+        """Tính điểm rủi ro = Xác suất (0-1) * Tác động * 10"""
         for record in self:
-            record.risk_score = (record.probability / 100.0) * record.impact_score * 10
+            # probability giờ là 0.0-1.0 (ví dụ: 0.7 = 70%)
+            record.risk_score = record.probability * record.impact_score * 10
     
     @api.depends('risk_score')
     def _compute_risk_level(self):
@@ -117,39 +118,58 @@ class RiskAssessment(models.Model):
                 }
             
             # Generate mitigation plan nâng cao
-            _logger.info(f"Enhancing risk {self.id} with Gemini AI")
+            _logger.info(f"Enhancing risk {self.id} with Gemini AI - Starting...")
             enhanced_mitigation = gemini.generate_mitigation_plan(self)
+            _logger.info(f"Mitigation plan length: {len(enhanced_mitigation) if enhanced_mitigation else 0}")
             
             # Root cause analysis nâng cao
             enhanced_root_cause = gemini.analyze_root_cause(self)
+            _logger.info(f"Root cause length: {len(enhanced_root_cause) if enhanced_root_cause else 0}")
             
-            # Cập nhật
-            self.write({
-                'mitigation_plan': enhanced_mitigation,
-                'root_cause': enhanced_root_cause,
-                'ai_confidence': min(self.ai_confidence + 10, 95)  # Tăng confidence
-            })
+            # Kiểm tra xem có dữ liệu mới không
+            if not enhanced_mitigation and not enhanced_root_cause:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Gemini AI không trả về dữ liệu',
+                        'message': 'Vui lòng kiểm tra API key và kết nối internet',
+                        'type': 'warning',
+                        'sticky': True,
+                    }
+                }
             
-            # Hiển thị notification và reload form
-            self.env['bus.bus']._sendone(self.env.user.partner_id, 'simple_notification', {
-                'title': '✅ Gemini AI phân tích hoàn tất',
-                'message': 'Đã nâng cấp Root Cause và Mitigation Plan bằng Gemini AI',
-                'type': 'success',
-                'sticky': False,
-            })
+            # Chỉ cập nhật các field có dữ liệu mới
+            update_vals = {'ai_confidence': min(self.ai_confidence + 10, 95)}
             
-            # Reload form view để hiển thị thay đổi
+            if enhanced_mitigation and enhanced_mitigation != self.mitigation_plan:
+                update_vals['mitigation_plan'] = enhanced_mitigation
+                _logger.info(f"Updated mitigation_plan for risk {self.id}")
+            
+            if enhanced_root_cause and enhanced_root_cause != self.root_cause:
+                update_vals['root_cause'] = enhanced_root_cause
+                _logger.info(f"Updated root_cause for risk {self.id}")
+            
+            # Cập nhật và commit
+            self.write(update_vals)
+            self.env.cr.commit()  # Force commit để đảm bảo dữ liệu được lưu
+            
+            _logger.info(f"Successfully enhanced risk {self.id} with Gemini AI")
+            
+            # Trả về notification thành công - KHÔNG reload form để tránh mất dữ liệu
             return {
-                'type': 'ir.actions.act_window',
-                'res_model': 'risk.assessment',
-                'res_id': self.id,
-                'view_mode': 'form',
-                'view_type': 'form',
-                'target': 'current',
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Gemini AI phân tích hoàn tất',
+                    'message': 'Đã nâng cấp Root Cause và Mitigation Plan. Vui lòng cuộn xuống các tab để xem!',
+                    'type': 'success',
+                    'sticky': False,
+                }
             }
             
         except Exception as e:
-            _logger.error(f"Error enhancing risk with Gemini: {str(e)}")
+            _logger.error(f"Error enhancing risk with Gemini: {str(e)}", exc_info=True)
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
@@ -162,17 +182,10 @@ class RiskAssessment(models.Model):
             }
     
     def name_get(self):
-        """Hiển thị tên rủi ro kèm mức độ"""
+        """Hiển thị tên rủi ro kèm điểm số"""
         result = []
         for record in self:
-            level_emoji = {
-                'low': '🟢',
-                'medium': '🟡',
-                'high': '🟠',
-                'critical': '🔴'
-            }
-            emoji = level_emoji.get(record.risk_level, '')
-            name = f"{emoji} {record.name} ({record.risk_score:.1f})"
+            name = f"{record.name} ({record.risk_score:.1f})"
             result.append((record.id, name))
         return result
 

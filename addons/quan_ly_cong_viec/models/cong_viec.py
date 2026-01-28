@@ -93,6 +93,7 @@ class CongViec(models.Model):
 
         - Khi trạng thái được chuyển sang 'hoan_thanh' mà % đang nhỏ hơn 100 -> tự động set 100
         - Không ép ngược lại (không tự giảm %) để tránh làm mất dữ liệu người dùng nhập tay
+        - Trigger AI re-scan khi có thay đổi quan trọng
         """
         res = super(CongViec, self).write(vals)
 
@@ -101,6 +102,21 @@ class CongViec(models.Model):
             for record in self:
                 if record.trang_thai == 'hoan_thanh' and record.ti_le_hoan_thanh < 100.0:
                     record.ti_le_hoan_thanh = 100.0
+        
+        # Trigger AI re-scan cho dự án khi task có thay đổi quan trọng
+        important_fields = {'trang_thai', 'ti_le_hoan_thanh', 'ngay_ket_thuc', 'nguoi_phu_trach_id'}
+        if any(field in vals for field in important_fields):
+            # Lấy danh sách dự án liên quan
+            projects = self.mapped('du_an_id').filtered(lambda p: p)
+            for project in projects:
+                try:
+                    # Gọi AI re-scan (chạy async nếu có thể)
+                    project._auto_detect_risks()
+                except Exception as e:
+                    # Không để lỗi AI làm gián đoạn việc cập nhật task
+                    import logging
+                    _logger = logging.getLogger(__name__)
+                    _logger.warning(f"Không thể chạy AI re-scan cho dự án {project.projects_id}: {str(e)}")
 
         return res
 

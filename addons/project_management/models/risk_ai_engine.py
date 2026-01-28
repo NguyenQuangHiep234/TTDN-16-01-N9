@@ -35,7 +35,7 @@ class RiskAIEngine(models.Model):
         
         # Rule 1: Nhiều công việc delay
         if delayed_percentage > 30:
-            probability = min(delayed_percentage, 100)
+            probability = min(delayed_percentage / 100.0, 1.0)  # Chuyển sang 0.0-1.0
             impact = 8.0 if delayed_percentage > 50 else 6.0
             
             description = f"Phát hiện {delayed_count}/{total_tasks} công việc ({delayed_percentage:.1f}%) bị trễ hạn."
@@ -59,14 +59,14 @@ class RiskAIEngine(models.Model):
                 'description': description,
                 'root_cause': root_cause,
                 'mitigation_plan': mitigation,
-                'ai_confidence': 85.0
+                'ai_confidence': 0.85  # 85% = 0.85
             })
         
         # Rule 2: Tiến độ thấp khi sắp hết thời gian
         if project.actual_end_date:
             days_remaining = (project.actual_end_date - today).days
             if 0 < days_remaining <= 30 and project.progress < 70:
-                probability = 90.0
+                probability = 0.90  # 90% = 0.90
                 impact = 9.0
                 
                 description = f"Dự án còn {days_remaining} ngày nhưng chỉ hoàn thành {project.progress:.1f}%."
@@ -85,7 +85,7 @@ class RiskAIEngine(models.Model):
                     'description': description,
                     'root_cause': root_cause,
                     'mitigation_plan': mitigation,
-                    'ai_confidence': 90.0
+                    'ai_confidence': 0.90  # 90% = 0.90
                 })
         
         return risks
@@ -142,7 +142,7 @@ class RiskAIEngine(models.Model):
         
         # Rule 2: Chi tiêu nhanh hơn tiến độ (Burn rate cao)
         elif spent_percentage > progress_percentage + 20:
-            probability = 80.0
+            probability = 0.80  # 80% = 0.80
             impact = 7.0
             
             description = f"Đã chi {spent_percentage:.1f}% ngân sách nhưng chỉ hoàn thành {progress_percentage:.1f}% công việc."
@@ -165,12 +165,12 @@ class RiskAIEngine(models.Model):
                 'description': description,
                 'root_cause': root_cause,
                 'mitigation_plan': mitigation,
-                'ai_confidence': 80.0
+                'ai_confidence': 0.80  # 80% = 0.80
             })
         
         # Rule 3: Sắp hết ngân sách
         elif spent_percentage > 80:
-            probability = 70.0
+            probability = 0.70  # 70% = 0.70
             impact = 6.0
             
             remaining = total_budget - total_spent
@@ -188,7 +188,7 @@ class RiskAIEngine(models.Model):
                 'description': description,
                 'root_cause': 'Ngân sách sắp cạn kiệt',
                 'mitigation_plan': mitigation,
-                'ai_confidence': 75.0
+                'ai_confidence': 0.75  # 75% = 0.75
             })
         
         return risks
@@ -220,7 +220,7 @@ class RiskAIEngine(models.Model):
                 overloaded.append((employee, len(tasks)))
         
         if overloaded:
-            probability = min(len(overloaded) * 20 + 40, 95)
+            probability = min(len(overloaded) * 20 + 40, 95) / 100.0  # Chuyển sang 0.0-1.0
             impact = 7.0
             
             overload_list = "\n".join([f"- {emp.ten_nv}: {count} công việc" for emp, count in overloaded])
@@ -245,7 +245,7 @@ class RiskAIEngine(models.Model):
                 'description': description,
                 'root_cause': root_cause,
                 'mitigation_plan': mitigation,
-                'ai_confidence': 85.0
+                'ai_confidence': 0.85  # 85% = 0.85
             })
         
         return risks

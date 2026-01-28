@@ -8,12 +8,6 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
-                        <button name="action_enhance_with_gemini" 
-                                string="🤖 Nâng cấp với Gemini AI" 
-                                type="object" 
-                                class="btn-primary"
-                                attrs="{'invisible': [('status', 'in', ['resolved', 'accepted'])]}"/>
-                        
                         <button name="action_start_mitigation" 
                                 string="Bắt đầu khắc phục" 
                                 type="object" 
@@ -55,11 +49,11 @@
                                 <field name="assigned_to" options="{'no_create': True}"/>
                             </group>
                             <group>
-                                <field name="probability" widget="percentage"/>
+                                <field name="probability" string="Xác suất (%)" />
                                 <field name="impact_score"/>
                                 <field name="risk_score" readonly="1"/>
                                 <field name="is_ai_detected" invisible="1"/>
-                                <field name="ai_confidence" widget="percentage" 
+                                <field name="ai_confidence" string="Độ tin cậy AI (%)" 
                                        attrs="{'invisible': [('is_ai_detected', '=', False)]}"/>
                             </group>
                         </group>
@@ -70,7 +64,7 @@
                                 <field name="resolved_date" readonly="1"/>
                             </group>
                             <group>
-                                <field name="project_progress" widget="percentage"/>
+                                <field name="project_progress" string="Tiến độ dự án (%)" />
                                 <field name="project_status"/>
                             </group>
                         </group>
@@ -111,7 +105,7 @@
                            decoration-success="risk_level == 'low'"
                            decoration-warning="risk_level == 'medium'"
                            decoration-danger="risk_level in ['high', 'critical']"/>
-                    <field name="probability" widget="percentage"/>
+                    <field name="probability" string="Xác suất (%)"/>
                     <field name="impact_score"/>
                     <field name="risk_score" widget="progressbar"/>
                     <field name="status" 
@@ -121,7 +115,7 @@
                     <field name="assigned_to"/>
                     <field name="detected_date"/>
                     <field name="is_ai_detected" string="AI" widget="boolean"/>
-                    <field name="ai_confidence" string="AI Confidence" widget="percentage"
+                    <field name="ai_confidence" string="AI Confidence (%)"
                            attrs="{'invisible': [('is_ai_detected', '=', False)]}"/>
                 </tree>
             </field>
